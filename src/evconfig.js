@@ -1,62 +1,49 @@
 const process = require("process")
 
-const log = require("./log").child({filename: __filename})
+const log = {info: console.log}//() => {}}
 
-/// Parse structured environment variables to objects
-function parseenv(key)
+/// Parse structured environment variables to arrays (objects)
+function evconfig(envObj)
 {
-  const env = process.env
-  let temp = {}
-  const root = {}
+  const env = envObj || process.env
+  const root = []
 
   Object.keys(env).forEach((envVar) =>
   {
-    //log.info(envVar, key)
-    if(!envVar.startsWith(key))
-      return
+    //if(!envVar.startsWith(String(key)))
+    //  return
 
-    const newVar = envVar.replace(/(\.\d+)(?=\.|$)/g, "\[$1")
+    //const newVar = envVar.replace(/(\.\d+)(?=\.|$)/g, "\[$1")
     // feeds.1.45.filter.3
     // => feeds[.1[.45.filter[.3
     // .1 => an Array (therefore convert \.(\d+)\. to \[\1\]\. )
     // . => an Object
-    const objSegments = newVar.split(".")
-    const last = objSegments.length -1
+    const objSegments = envVar.split(".")
+    const leaf = objSegments.length -1
     let current = root
     objSegments.forEach((segment, index) => 
     {
-      if(index < last)
+      if(index < leaf)
       {
-        if(segment.substr(-1) === "[")
+        if(typeof(current[segment]) !== "object" || current[segment] === null) // note Array is an Object
         {
-          segment = segment.slice(0, -1)
-          // we have an array rather then an object
-          if(!Array.isArray(current[segment]))
-          {
-            current[segment] = []
-          }
-          // otherwise we already have an Array
+          current[segment] = []
         }
-        else 
-        {
-          if(typeof(current[segment]) !== "object" || current[segment] === null) // note Array is an Object
-          {
-            current[segment] = {}
-          }
-          // otherwise we already have an Object
-        }
+        // otherwise we already have an Object
         current = current[segment]
       }
       else
       {
-        // last segment
+        // last (leaf) segment
         current[segment] = env[envVar]
-      }
+        //console.log("parseenv", segment, JSON.stringify(root, null, 2))
+}
     })
   })
-  log.info("parseenv", JSON.stringify(root, null, 2))
+  //console.log("parseenv", JSON.stringify(root, null, 2))
   return(root)
 }
 
-module.exports = parseenv
-module.exports.parseenv = parseenv // deprecated
+module.exports = evconfig
+module.exports.evconfig = evconfig
+module.exports.parseenv = evconfig // deprecated
